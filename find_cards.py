@@ -31,6 +31,23 @@ def find_cards(img):
                         cards.append(cv2.boundingRect(np.array([leftmost, rightmost, topmost, bottommost])))
     return cards
 
+def find_shapes(image):
+    count = 0
+    for gray in cv2.split(image):
+        for thrs in xrange(0, 255, 26):
+            if thrs == 0:
+                bin = cv2.Canny(gray, 0, 50, apertureSize=5)
+                bin = cv2.dilate(bin, None)
+            else:
+                retval, bin = cv2.threshold(gray, thrs, 255, cv2.THRESH_BINARY)
+            bin, contours, hierarchy = cv2.findContours(bin, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            for cnt in contours:
+                if cv2.contourArea(cnt) > 800:
+                    cv2.drawContours(card_img, [cnt], 0, (255,0,0), 1)
+                    count += 1
+    cv2.imshow('squares2', card_img)
+    return count
+
 if __name__ == '__main__':
     from glob import glob
     for fn in glob('gameboard2.jpg'):
@@ -39,7 +56,8 @@ if __name__ == '__main__':
         cards = cv2.groupRectangles(cards, 1)[0]
         for card in cards:
             card_img = img[card[1]:card[1]+card[3], card[0]:card[0]+card[2]]
-            #contours, hierarchy = cv2.findContours(card_img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            num_shapes = find_shapes(card_img)
+            print num_shapes
             cv2.rectangle(img, (card[0], card[1]), (card[0]+card[2], card[1]+card[3]), (255, 0, 0), thickness=2)
         print "Found {num} cards.".format(num=len(cards))
         cv2.imshow('squares', img)
