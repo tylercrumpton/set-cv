@@ -33,19 +33,15 @@ def find_cards(img):
 
 def find_shapes(image):
     count = 0
-    for gray in cv2.split(image):
-        for thrs in xrange(0, 255, 26):
-            if thrs == 0:
-                bin = cv2.Canny(gray, 0, 50, apertureSize=5)
-                bin = cv2.dilate(bin, None)
-            else:
-                retval, bin = cv2.threshold(gray, thrs, 255, cv2.THRESH_BINARY)
-            bin, contours, hierarchy = cv2.findContours(bin, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-            for cnt in contours:
-                if cv2.contourArea(cnt) > 800:
-                    cv2.drawContours(card_img, [cnt], 0, (255,0,0), 1)
-                    count += 1
-    cv2.imshow('squares2', card_img)
+    blur_img = cv2.blur(image, (3, 3))
+    cv2.imwrite('output.jpg', blur_img)
+    gray_img = cv2.cvtColor(blur_img, cv2.COLOR_BGR2GRAY)
+    thr_image = cv2.Canny(gray_img, 40, 210)
+    cont_img, contours, hierarchy = cv2.findContours(thr_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours:
+        if cv2.contourArea(cnt) > 200:
+            cv2.drawContours(card_img, [cnt], 0, (0,255,0), 1)
+            count += 1
     return count
 
 if __name__ == '__main__':
