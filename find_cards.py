@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+from collections import namedtuple
+import operator
 
 def angle_cos(p0, p1, p2):
     d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
@@ -32,7 +34,8 @@ def find_cards(img):
     return cards
 
 def find_shapes(image):
-    count = 0
+    num_shapes = {"squiggles": 0, "diamonds": 0, "ovals": 0}
+
     blur_img = cv2.blur(image, (3, 3))
     gray_img = cv2.cvtColor(blur_img, cv2.COLOR_BGR2GRAY)
     thr_image = cv2.Canny(gray_img, 40, 210, apertureSize=3)
@@ -41,8 +44,19 @@ def find_shapes(image):
     for cnt in contours:
         if cv2.contourArea(cnt) > 500:
             cv2.drawContours(card_img, [cnt], 0, (0, 255, 0), 1)
-            count += 1
-    return count
+            epsilon = 0.01*cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, epsilon, True)
+            if approx.shape[0] < 9:
+                num_shapes["diamonds"] += 1
+            elif approx.shape[0] > 12:
+                num_shapes["squiggles"] += 1
+            else:
+                num_shapes["ovals"] += 1
+
+    total_num_shapes = num_shapes["ovals"] + num_shapes["squiggles"] + num_shapes["diamonds"]
+    shape_type = max(num_shapes.iteritems(), key=operator.itemgetter(1))[0]
+    shapes = namedtuple("shapes", ["type", "number", "color", "shade"])
+    return shapes(shape_type, total_num_shapes, "UNKNOWN", "UNKNOWN")
 
 if __name__ == '__main__':
     from glob import glob
@@ -50,13 +64,19 @@ if __name__ == '__main__':
         img = cv2.imread(fn)
         cards = find_cards(img)
         cards = cv2.groupRectangles(cards, 1)[0]
-        shape_count = 0
+        shape_count = {"squiggles": 0, "diamonds": 0, "ovals": 0}
         for card in cards:
             card_img = img[card[1]:card[1]+card[3], card[0]:card[0]+card[2]]
-            num_shapes = find_shapes(card_img)
-            shape_count += num_shapes
+            shapes = find_shapes(card_img)
+            shape_count[shapes.type] += shapes.number
             cv2.rectangle(img, (card[0], card[1]), (card[0]+card[2], card[1]+card[3]), (255, 0, 0), thickness=2)
-        print "Found {num} cards and {shapes} shapes.".format(num=len(cards), shapes=shape_count)
+        print "Found {num} cards and {shapes} shapes (d={d}, o={o}, s={s}).".format(
+            num=len(cards),
+            shapes=shape_count,
+            s=shape_count["squiggles"],
+            o=shape_count["ovals"],
+            d=shape_count["diamonds"]
+        )
         cv2.imshow('squares', img)
         ch = 0xFF & cv2.waitKey()
         if ch == 27:
