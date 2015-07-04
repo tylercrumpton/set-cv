@@ -34,13 +34,13 @@ def find_cards(img):
 def find_shapes(image):
     count = 0
     blur_img = cv2.blur(image, (3, 3))
-    cv2.imwrite('output.jpg', blur_img)
     gray_img = cv2.cvtColor(blur_img, cv2.COLOR_BGR2GRAY)
-    thr_image = cv2.Canny(gray_img, 40, 210)
+    thr_image = cv2.Canny(gray_img, 40, 210, apertureSize=3)
+    thr_image = cv2.dilate(thr_image, np.ones((3, 3), np.uint8))
     cont_img, contours, hierarchy = cv2.findContours(thr_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contours:
-        if cv2.contourArea(cnt) > 200:
-            cv2.drawContours(card_img, [cnt], 0, (0,255,0), 1)
+        if cv2.contourArea(cnt) > 500:
+            cv2.drawContours(card_img, [cnt], 0, (0, 255, 0), 1)
             count += 1
     return count
 
@@ -50,12 +50,13 @@ if __name__ == '__main__':
         img = cv2.imread(fn)
         cards = find_cards(img)
         cards = cv2.groupRectangles(cards, 1)[0]
+        shape_count = 0
         for card in cards:
             card_img = img[card[1]:card[1]+card[3], card[0]:card[0]+card[2]]
             num_shapes = find_shapes(card_img)
-            print num_shapes
+            shape_count += num_shapes
             cv2.rectangle(img, (card[0], card[1]), (card[0]+card[2], card[1]+card[3]), (255, 0, 0), thickness=2)
-        print "Found {num} cards.".format(num=len(cards))
+        print "Found {num} cards and {shapes} shapes.".format(num=len(cards), shapes=shape_count)
         cv2.imshow('squares', img)
         ch = 0xFF & cv2.waitKey()
         if ch == 27:
